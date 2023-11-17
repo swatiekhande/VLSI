@@ -1,0 +1,130 @@
+entity fifo is
+    Port ( we : in STD_LOGIC;
+           re : in STD_LOGIC;
+           rst : in STD_LOGIC;
+           clk : in STD_LOGIC;
+           full : out STD_LOGIC;
+           empty : out STD_LOGIC;
+           data_out : out STD_LOGIC_VECTOR (7 downto 0));
+end fifo;
+
+architecture Behavioral of fifo is
+signal wptr : integer range 0  to 7;
+signal rptr : integer range 0  to 7;
+type fifo1 is array (0 to 7) of std_logic_vector(7 downto 0);
+signal memory: fifo1;
+type data_in is array (0 to 7) of std_logic_vector (7 downto 0);
+signal data: data_in:= ("10000000","01000000","00100000","00010000","00001000","00000100","00000010","00000001");
+
+
+signal clkout: std_logic;
+signal count: Integer range 0 to 49999999:=0;
+
+begin
+process( clk,rst)
+begin
+if rst='1' then
+clkout<='0';
+count <=0;
+elsif(clk' event and clk='1') then
+if(count = 49999999) then
+clkout <= not clkout;
+count <= 0;
+else 
+count <= count+1;
+end if;
+end if;
+end process;
+
+process(clkout, rst)
+begin
+if(clkout' event and clkout='1')then
+    if rst = '1' then
+       for i in 0 to 7 loop
+            memory(i) <= "00000000";
+       end loop;
+       empty <= '1';
+       full <= '0';
+       wptr <= 0;
+       rptr <= 0;     
+     elsif (we ='1') then
+       rptr <= 0;
+       memory(wptr) <= data(wptr);
+       empty <= '0';
+       if(wptr = 7) then
+            wptr <= 0;
+            full <= '1';
+       else
+            wptr <= wptr + 1;
+       end if;     
+     elsif (re ='1') then
+     
+            data_out <= memory(rptr);
+            full <= '0';
+            if(rptr = 7) then
+                rptr <= 0;
+                empty <= '1';
+            else
+                full <= '0';
+                rptr <= rptr + 1;
+            end if;
+          else
+            data_out <= "ZZZZZZZZ";
+            empty <= '1';
+        end if;     
+        end if;
+end process;
+end Behavioral;
+
+Test Bench
+entity fifo_test is
+--  Port ( );
+end fifo_test;
+
+architecture Behavioral of fifo_test is
+component fifo is
+    Port ( we : in STD_LOGIC;
+           re : in STD_LOGIC;
+           rst : in STD_LOGIC;
+           clk : in STD_LOGIC;
+           full : out STD_LOGIC;
+           empty : out STD_LOGIC;
+           data_out : out STD_LOGIC_VECTOR (7 downto 0));
+end component;
+signal clk,rst,we,re:std_logic;
+signal empty:std_logic;
+signal full:std_logic;
+signal data_out:std_logic_vector(7 downto 0);
+constant clk_period: time:= 10 ns;
+begin
+uut: fifo port map (
+clk=>clk,
+rst=>rst,
+we=>we,
+re=>re,
+empty=>empty,
+full=>full,
+data_out=>data_out);
+process
+begin
+clk<='0';
+wait for clk_period/2;
+clk<='1';
+wait for clk_period/2;
+end process;
+process
+begin
+rst<='1';
+wait for  10 ns;
+rst<='0';
+--wait for  10 ns;
+we<='1';
+re<='0';
+wait for  80 ns;
+we<='0';
+re<='1';
+wait for  80 ns;
+
+wait;
+end process;
+end Behavioral;
